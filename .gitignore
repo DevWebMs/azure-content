@@ -5,7 +5,7 @@
 
 # Mac Cruft #
 #############
-*.DS_store
+.DS_Store
 *~
 
 # System-generated files #
