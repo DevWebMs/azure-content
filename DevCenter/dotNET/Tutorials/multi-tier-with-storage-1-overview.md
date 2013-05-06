@@ -73,17 +73,17 @@ Département de Sociologie est affichée.
 ![](<../Media/mtas-subscribe-confirmation-page.png>)
 
 Chaque email envoyé par le service (sauf les confirmations d'abonnement) inclue
-un lien hypertexte qui permet de se désabonner. Si un déstinataire clique ce
-lien, une page web affiché demandant la confirmation de désabonnement.
+un lien hypertexte qui permet de se désabonner. Si un déstinataire clique sur ce
+lien, une page web est affichée demandant la confirmation de désabonnement.
 
 ![](<../Media/mtas-unsubscribe-query-page.png>)
 
 Si le destinataire clique sur le bouton **Confirmer**, une page confirmant que
-la person a été retirée de la liste de diffusion est affichée.
+la personne a été retirée de la liste de diffusion est affichée.
 
 ![](<../Media/mtas-unsubscribe-confirmation-page.png>)
 
-Voici une liste des tutoriels accompagné du résumé de leur contenu :
+Voici une liste des tutoriels accompagnés du résumé de leur contenu :
 
 1.  **Introduction à l'application Service Email Windows Azure** (ce tutoriel).
     Une vue d'ensemble de l'application et de son architecture.
@@ -134,53 +134,64 @@ elles échouent. Et les Queues et Tables de Windows Azure Storage fournissent un
 moyen de communication serveur-à-serveurs qui peut survivre aux échecs sans
 perdre le travail en cours.
 
-### Scalable
+### Evolutif
 
-An email service also must be able to handle spikes in workload, since sometimes
-you are sending emails to small lists and sometimes to very large lists. In many
-hosting environments, you have to purchase and maintain sufficient hardware to
-handle the spikes in workload, and you’re paying for all that capacity 100% of
-the time although you might only use it 5% of the time. With Windows Azure, you
-pay only for the amount of computing power that you actually need for only as
-long as you need it. To scale up for a large mailing, you just change a
-configuration setting to increase the number of servers you have available to
-process the workload, and this can be done programmatically. For example, you
-could configure the application so that if the number of work items waiting in
-the queue exceeds a certain number, Windows Azure automatically spins up
-additional instances of the worker role that processes those work items.
+Un service d'email doit aussi être capable de supporter les piques de charge de
+travail, puisque il arrive d'envoyer des emails à de petites liste, et parfois à
+des listes bien plus larges. Dans beaucoup d'environnement d'hébergement, vous
+devez acheter et maintenir une infrastructure suffisante pour supporter les
+piques de charge, et vous payez pour cette capacité 100% du temps même si vous
+ne l'utilisez que 5% du temps. Avec Windows Azure, vous ne payez que pour la
+puissance de calcul que vous utilisez réellement, et seulement pour la période
+où vous en avez besoin. Pour faire évoluer le systeme et lui permettre de
+supporter une liste d'emails très large, vous changez simplement un paramètre de
+configuration pour augmenter le nombre de serveur à disposition pour traiter la
+charge de travail, et cela peut être fait programmatiquement.
 
-The front-end stores email lists and messages to be sent to them in Windows
-Azure tables. When an administrator schedules a message to be sent, a table row
-containing the scheduled date and other data such as the subject line is added
-to the `message` table. A worker role periodically scans the `message` table
-looking for messages that need to be sent (we’ll call this worker role A).
+Par exemple, vous pouvez configurer l'application de sorte que si le nombre
+d'éléments en attente dans la queue dépasse un certain nombre, Windows Azure
+démarre automatiquement de nouvelles instances de worker role pour consumer ces
+éléments.
 
-When worker role A finds a message needing to be sent, it does the following
-tasks:
+Le front-end stocke les listes d'emails et les message à leur envoyer dans des
+tables Windows Azure. Lorsqu'un administrateur planifie l'envoie d'un message,
+une ligne dans la table `message` contenant la date planifiée et d'autres
+données tel que l'objet du message est insérée. Un worker role scanne
+périodiquement la table `message` pour de nouveau message à envoyer (nous
+appellerons ce worker role A).
 
--   Gets all the email addresses in the destination email list.
+Quand le worker role A trouve un message à envoyer, il effectue les tâches
+suivantes :
 
--   Puts the information needed to send each email in the `message` table.
+-   Récupère toutes les adresses email dans la liste de destinataires.
 
--   Creates a queue work item for each email that needs to be sent.
+-   Entre les informations nécessaires pour envoyer chaque email dans la table
+    `message`.
 
-A second worker role (worker role B) polls the queue for work items. When worker
-role B finds a work item, it processes the item by sending the email, and then
-it deletes the work item from the queue. The following diagram shows these
-relationships.
+-   Créé un élément de travail dans la queue pour chaque email qui doit être
+    envoyé.
+
+Un second worker role (worker role B) intéroge périodiquement la queue pour de
+nouveau éléments de travail. Quand le worker role B trouve un élément de
+travail, il le consume en envoyant l'email, et il suprime l'élément de travail
+de la queue. le diagramme suivant présentes ces relations :
 
 ![](<../Media/mtas-worker-roles-a-and-b.png>)
 
-No emails are missed if worker role B goes down and has to be restarted, because
-a queue work item for an email isn’t deleted until after the email has been
-sent. The back-end also implements table processing that prevents multiple
-emails from getting sent in case worker role A goes down and has to be
-restarted. In that case, multiple queue work items might be generated for a
-given destination email address. But for each destination email address, a row
-in the `message` table tracks whether the email has been sent. Depending on the
-timing of the restart and email processing, worker A uses this row to avoid
-creating a second queue work item, or worker B uses this row to avoid sending a
-second email.
+Aucun email n'est manqué si le worker role B s'arrête et doit être redémarré,
+puisque l'élément dans la queue pour l'envoie d'email n'est supprimé qu'une fois
+l'email envoyé.
+
+Le back-end est aussi implémenté de sorte à éviter que plusieurs emails ne
+soient envoyés si le worker role A s'arrête et est redémarré. Dans ce cas,
+plusieurs éléments dans la queue de travail peuvent être générés,
+
+In that case, multiple queue work items might be generated for a given
+destination email address. But for each destination email address, a row in the
+`message` table tracks whether the email has been sent. Depending on the timing
+of the restart and email processing, worker A uses this row to avoid creating a
+second queue work item, or worker B uses this row to avoid sending a second
+email.
 
 ![](<../Media/mtas-message-processing.png>)
 
